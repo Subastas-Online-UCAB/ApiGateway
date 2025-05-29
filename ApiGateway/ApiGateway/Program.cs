@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,16 +12,20 @@ builder.Services.AddHttpClient("yarp")
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         });
 
-// 🔄 Configuración del Reverse Proxy con YARP
+// ✅ Swagger (protegido también)
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// ✅ Reverse Proxy YARP
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
-// 🔐 JWT con Keycloak
+// ✅ Autenticación con JWT de Keycloak
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = "http://localhost:8081/realms/microservicio-usuarios";
-        options.Audience = "account";
+        options.Audience = "account"; // Cambia esto si tu client_id es diferente
         options.RequireHttpsMetadata = false;
 
         options.TokenValidationParameters = new TokenValidationParameters
@@ -30,11 +34,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidIssuer = "http://localhost:8081/realms/microservicio-usuarios",
             ValidAudience = "account",
-            RoleClaimType = "realm_access.roles" // ⚠️ Usa esto si tus roles vienen desde Keycloak
+            RoleClaimType = "realm_access.roles"
         };
     });
 
-// 🔐 Política global de autorización
+// ✅ Política global: todo requiere autenticación
 builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -44,8 +48,13 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// ✅ Swagger también protegido
+app.UseSwagger();
+app.UseSwaggerUI();
+
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapReverseProxy();
+
+app.MapReverseProxy().RequireAuthorization();
 
 app.Run();
