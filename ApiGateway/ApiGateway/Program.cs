@@ -3,6 +3,18 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// CORS global
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReact",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:3000") // tu frontend
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
+
 // ✅ Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -47,7 +59,7 @@ app.UseAuthorization();
 
 app.UseSwagger();
 app.UseSwaggerUI();
-
+app.UseCors("AllowReact"); // Habilita CORS aquí
 app.MapReverseProxy(); // No usamos RequireAuthorization aquí
 
 app.Run();
