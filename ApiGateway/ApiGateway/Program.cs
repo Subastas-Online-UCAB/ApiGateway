@@ -1,33 +1,23 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ✅ Aceptar certificados autofirmados para desarrollo
-builder.Services.AddHttpClient("yarp")
-    .ConfigurePrimaryHttpMessageHandler(() =>
-        new HttpClientHandler
-        {
-            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-        });
-
-// ✅ Swagger (protegido también)
+// ✅ Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ✅ Reverse Proxy YARP
+// ✅ YARP
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
-// ✅ Autenticación con JWT de Keycloak
+// ✅ JWT Authentication with Keycloak
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = "http://localhost:8081/realms/microservicio-usuarios";
-        options.Audience = "account"; // Cambia esto si tu client_id es diferente
+        options.Audience = "account"; // Cambia esto si usas otro client_id
         options.RequireHttpsMetadata = false;
-
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -38,23 +28,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// ✅ Política global: todo requiere autenticación
+// ✅ Authorization: solo política nombrada (no global)
 builder.Services.AddAuthorization(options =>
 {
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
+    options.AddPolicy("AuthenticatedUsersOnly", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+    });
 });
 
 var app = builder.Build();
 
-// ✅ Swagger también protegido
-app.UseSwagger();
-app.UseSwaggerUI();
+// ✅ Middleware estándar
+app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapReverseProxy().RequireAuthorization();
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.MapReverseProxy(); // No usamos RequireAuthorization aquí
 
 app.Run();
