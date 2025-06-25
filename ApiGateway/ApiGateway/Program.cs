@@ -53,13 +53,13 @@ var app = builder.Build();
 
 // ✅ Middleware estándar
 app.UseRouting();
-
+app.UseCors("AllowReact"); // Habilita CORS aquí
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseSwagger();
 app.UseSwaggerUI();
-app.UseCors("AllowReact"); // Habilita CORS aquí
+
 app.MapReverseProxy(); // No usamos RequireAuthorization aquí
 
 app.Run();
